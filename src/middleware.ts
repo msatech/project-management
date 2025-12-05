@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { getSessionPayload } from './lib/session';
+import { getSessionPayload } from './lib/session.edge';
 
 const protectedRoutes = ['/dashboard', '/organization']; // Add base protected routes
 const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/'];

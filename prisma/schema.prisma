@@ -10,40 +10,78 @@ datasource db {
   url      = "file:./dev.db"
 }
 
-// USER AND AUTHENTICATION
-model User {
-  id              String                @id @default(cuid())
-  name            String
-  email           String                @unique
-  emailVerified   DateTime?
-  hashedPassword  String
-  avatarUrl       String?
-  role            String                @default("USER") // Was Role enum
-  themePreference String                @default("SYSTEM") // Was ThemePreference enum
-  plan            String                @default("FREE") // Was Plan enum
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  organizations   OrganizationMember[]
-  leadedProjects  Project[]             @relation("ProjectLead")
-  reportedIssues  Issue[]               @relation("Reporter")
-  assignedIssues  Issue[]               @relation("Assignee")
-  comments        Comment[]
-  ownedOrgs       Organization[]        @relation("OrganizationOwner")
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
 }
 
-// ORGANIZATION
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// User and Organization
+model User {
+  id              String    @id @default(cuid())
+  name            String?
+  email           String?   @unique
+  emailVerified   DateTime?
+  hashedPassword  String?
+  image           String?
+  avatarUrl       String?
+  accounts        Account[]
+  sessions        Session[]
+  role            String    @default("USER") // Was enum Role
+  themePreference String?   @default("SYSTEM") // Was enum ThemePreference
+
+  // Organization relations
+  ownedOrganizations Organization[]      @relation("OrganizationOwner")
+  organizations      OrganizationMember[]
+  createdIssues      Issue[]             @relation("Reporter")
+  assignedIssues     Issue[]             @relation("Assignee")
+  comments           Comment[]
+  activityLogs       ActivityLog[]
+  createdProjects    Project[]           @relation("ProjectLead")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+}
+
 model Organization {
-  id        String               @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  slug      String               @unique
+  slug      String    @unique
   ownerId   String
-  owner     User                 @relation("OrganizationOwner", fields: [ownerId], references: [id])
+  owner     User      @relation("OrganizationOwner", fields: [ownerId], references: [id])
   members   OrganizationMember[]
   projects  Project[]
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-
-  @@index([ownerId])
+  plan      String    @default("FREE") // Was enum Plan
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model OrganizationMember {
@@ -52,170 +90,126 @@ model OrganizationMember {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orgRole        String // Was OrgRole enum
+  orgRole        String       @default("MEMBER") // Was enum OrgRole
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
   @@unique([organizationId, userId])
-  @@index([organizationId])
-  @@index([userId])
 }
 
 
-// PROJECT
+// Project Management
 model Project {
-  id             String         @id @default(cuid())
+  id             String       @id @default(cuid())
   name           String
-  key            String
-  type           String // Was ProjectType enum
+  key            String       @unique
+  type           String       @default("KANBAN") // Was enum ProjectType
   organizationId String
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id])
   leadId         String
-  lead           User           @relation("ProjectLead", fields: [leadId], references: [id])
-  sprints        Sprint[]
+  lead           User         @relation("ProjectLead", fields: [leadId], references: [id])
   statuses       Status[]
+  sprints        Sprint[]
   issues         Issue[]
-  customFields   CustomField[]
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  @@unique([organizationId, key])
-  @@index([organizationId])
-  @@index([leadId])
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
 }
 
-
-// STATUS
 model Status {
-  id        String @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  category  String // Was StatusCategory enum
+  category  String   @default("TODO") // Was enum StatusCategory
   order     Int
   projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   issues    Issue[]
-
-  @@index([projectId])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-
-// SPRINT
 model Sprint {
-  id         String        @id @default(cuid())
-  name       String
-  projectId  String
-  project    Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  startDate  DateTime?
-  endDate    DateTime?
-  goal       String?
-  status     String // Was SprintStatus enum
-  issues     SprintIssue[]
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-
-  @@index([projectId])
+  id        String   @id @default(cuid())
+  name      String
+  goal      String?
+  status    String   @default("FUTURE") // Was enum SprintStatus
+  startDate DateTime?
+  endDate   DateTime?
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  issues    IssueSprint[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-// ISSUE
 model Issue {
-  id              String         @id @default(cuid())
+  id              String  @id @default(cuid())
+  key             String  @unique
   title           String
-  key             String
-  order           Int
-  projectId       String
-  project         Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  statusId        String
-  status          Status         @relation(fields: [statusId], references: [id])
-  reporterId      String
-  reporter        User           @relation("Reporter", fields: [reporterId], references: [id])
-  assigneeId      String?
-  assignee        User?          @relation("Assignee", fields: [assigneeId], references: [id])
-  type            String // Was IssueType enum
-  priority        String // Was Priority enum
   description     String?
+  order           Int     @default(0)
   estimatePoints  Int?
-  parentIssueId   String?
-  parentIssue     Issue?         @relation("IssueSubtasks", fields: [parentIssueId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  subtasks        Issue[]        @relation("IssueSubtasks")
-  sprints         SprintIssue[]
-  comments        Comment[]
+  type            String  @default("TASK") // Was enum IssueType
+  priority        String  @default("NONE") // Was enum Priority
+  
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  statusId String
+  status   Status @relation(fields: [statusId], references: [id])
+
+  reporterId String
+  reporter   User   @relation("Reporter", fields: [reporterId], references: [id])
+  assigneeId String?
+  assignee   User?  @relation("Assignee", fields: [assigneeId], references: [id])
+
+  sprints   IssueSprint[]
+  comments  Comment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
   activityLogs    ActivityLog[]
-  customFieldValues Json?
-
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  @@unique([projectId, key])
-  @@index([projectId])
-  @@index([statusId])
-  @@index([reporterId])
-  @@index([assigneeId])
-  @@index([parentIssueId])
+  customFieldValues String?
 }
 
-model SprintIssue {
-  sprintId  String
-  sprint    Sprint @relation(fields: [sprintId], references: [id], onDelete: Cascade)
+model IssueSprint {
   issueId   String
-  issue     Issue  @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  sprintId  String
+  sprint    Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
   addedAt   DateTime @default(now())
 
-  @@id([sprintId, issueId])
-  @@index([issueId])
+  @@id([issueId, sprintId])
 }
 
-// COMMENT
 model Comment {
   id        String   @id @default(cuid())
   body      String
   issueId   String
   issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
   authorId  String
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([issueId])
-  @@index([authorId])
 }
 
-
-// ACTIVITY LOG
 model ActivityLog {
   id        String   @id @default(cuid())
   issueId   String
   issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User     @relation(fields: [actorId], references: [id])
   type      String // e.g., STATUS_CHANGED, ASSIGNEE_CHANGED
   metadata  String? // Was Json
   createdAt DateTime   @default(now())
-
-  @@index([issueId])
 }
 
-
-// CUSTOMIZATION
 model CustomField {
-  id                String   @id @default(cuid())
-  name              String
-  projectId         String
-  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  type              String // Was CustomFieldType enum
-  config            String? // Was Json e.g., { options: ["A", "B"] } for SELECT
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  @@index([projectId])
-}
-
-model CustomFieldValue {
-  id            String      @id @default(cuid())
-  issueId       String
-  customFieldId String
-  value         String // The actual value, can be stringified JSON for complex types
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-
-  @@unique([issueId, customFieldId])
-  @@index([issueId])
-  @@index([customFieldId])
+  id              String   @id @default(cuid())
+  name            String
+  projectId       String
+  type            String // Was enum CustomFieldType
+  config          String? // e.g., { options: ["A", "B"] } for SELECT Was Json
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
