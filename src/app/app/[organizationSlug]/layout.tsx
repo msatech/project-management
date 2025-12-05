@@ -34,7 +34,17 @@ export default async function OrganizationLayout({
   });
 
   if (!org || org.members.length === 0) {
-    notFound();
+    // If the user is not a member, maybe they are trying to access a different org
+    // Let's find their first org and redirect them there.
+    const firstUserOrg = await db.organization.findFirst({
+      where: { members: { some: { userId: session.user.id } } },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (firstUserOrg) {
+      redirect(`/app/${firstUserOrg.slug}`);
+    }
+    // If they have no orgs, something is wrong, redirect to create one
+    redirect('/app/create-organization');
   }
 
   const userOrgs = await db.organization.findMany({
@@ -47,7 +57,7 @@ export default async function OrganizationLayout({
       <AppSidebar user={session.user} currentOrg={org} userOrgs={userOrgs} />
       <div className="flex flex-col sm:gap-4 sm:py-4 sm:pl-14">
         <AppHeader />
-        <main className="grid flex-1 items-start gap-4 p-4 sm:px-6 sm:py-0 md:gap-8">
+        <main className="flex-1 items-start p-4 sm:px-6 sm:py-0">
             {children}
         </main>
       </div>

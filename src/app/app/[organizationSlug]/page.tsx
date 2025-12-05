@@ -1,6 +1,7 @@
 import { db } from '@/lib/db';
 import { getSession } from '@/lib/session';
 import { redirect, notFound } from 'next/navigation';
+import { CreateProjectForm } from './_components/create-project-form';
 
 export default async function OrganizationDashboardPage({ params }: { params: { organizationSlug: string } }) {
   const session = await getSession();
@@ -29,16 +30,12 @@ export default async function OrganizationDashboardPage({ params }: { params: { 
     notFound();
   }
 
+  // If the org has a project, redirect to the first one.
   if (org.projects.length > 0) {
     const firstProject = org.projects[0];
     redirect(`/app/${org.slug}/${firstProject.key}`);
   }
 
-  // TODO: Add a page to create a new project if none exist.
-  return (
-    <div>
-      <h1>Welcome to {org.name}</h1>
-      <p>You don&apos;t have any projects yet. Create one to get started.</p>
-    </div>
-  );
+  // If the org has no projects, show the create project form.
+  return <CreateProjectForm organization={org} />;
 }
