@@ -85,6 +85,26 @@ export async function getIssueDetails(issueId: string) {
     return issue;
 }
 
+export async function updateIssueAssignee({
+    issueId,
+    assigneeId,
+    projectId,
+  }: {
+    issueId: string;
+    assigneeId: string | null;
+    projectId: string;
+  }) {
+    await db.issue.update({
+      where: { id: issueId },
+      data: { assigneeId },
+    });
+  
+    const project = await db.project.findUnique({ where: { id: projectId }, include: { organization: true } });
+    if (project) {
+      revalidatePath(`/app/${project.organization.slug}/${project.key}/board`);
+    }
+}
+
 
 export async function summarizeIssue(issueId: string) {
     const issue = await db.issue.findUnique({

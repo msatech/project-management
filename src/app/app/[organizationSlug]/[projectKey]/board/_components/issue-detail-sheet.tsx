@@ -1,6 +1,6 @@
 'use client'
 
-import { getIssueDetails, summarizeIssue } from '@/lib/actions/issue.actions';
+import { getIssueDetails, summarizeIssue, updateIssueAssignee } from '@/lib/actions/issue.actions';
 import { useEffect, useState, useTransition } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -11,12 +11,15 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Bot, Sparkles } from 'lucide-radix';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 
 export function IssueDetailSheet({ issueId, users }: { issueId: string; users: any[] }) {
     const [issue, setIssue] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [summary, setSummary] = useState('');
     const [isSummaryLoading, startSummaryTransition] = useTransition();
+    const { toast } = useToast();
 
     useEffect(() => {
         getIssueDetails(issueId).then(data => {
@@ -33,6 +36,29 @@ export function IssueDetailSheet({ issueId, users }: { issueId: string; users: a
                 setSummary(result.summary);
             }
         });
+    };
+
+    const handleAssigneeChange = async (assigneeId: string) => {
+        const newAssigneeId = assigneeId === 'unassigned' ? null : assigneeId;
+        try {
+            await updateIssueAssignee({
+                issueId: issue.id,
+                assigneeId: newAssigneeId,
+                projectId: issue.projectId,
+            });
+            setIssue({ ...issue, assigneeId: newAssigneeId });
+            const assignee = users.find(u => u.id === newAssigneeId);
+            toast({
+                title: 'Assignee changed',
+                description: assignee ? `Issue assigned to ${assignee.name}` : 'Issue unassigned',
+            })
+        } catch (error) {
+            toast({
+                title: 'Error updating assignee',
+                description: 'Could not save changes. Please try again.',
+                variant: 'destructive',
+            });
+        }
     };
 
     if (loading || !issue) {
@@ -99,15 +125,42 @@ export function IssueDetailSheet({ issueId, users }: { issueId: string; users: a
                     <div><Badge variant="secondary">{issue.status.name}</Badge></div>
                     
                     <div className="text-muted-foreground">Assignee</div>
-                    <div>{assignee ? (
-                        <div className="flex items-center gap-2">
-                             <Avatar className="h-6 w-6">
-                                <AvatarImage src={assignee.avatarUrl} alt={assignee.name} />
-                                <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span>{assignee.name}</span>
-                        </div>
-                    ) : 'Unassigned'}</div>
+                    <div>
+                        <Select onValueChange={handleAssigneeChange} defaultValue={assignee?.id ?? 'unassigned'}>
+                            <SelectTrigger className="h-auto p-1 border-0 bg-transparent focus:ring-0 focus:ring-offset-0">
+                                <SelectValue>
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarImage src={assignee?.avatarUrl} alt={assignee?.name} />
+                                            <AvatarFallback>{assignee ? assignee.name.charAt(0) : 'U'}</AvatarFallback>
+                                        </Avatar>
+                                        <span>{assignee ? assignee.name : 'Unassigned'}</span>
+                                    </div>
+                                </SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="unassigned">
+                                    <div className="flex items-center gap-2">
+                                        <Avatar className="h-6 w-6">
+                                            <AvatarFallback>U</AvatarFallback>
+                                        </Avatar>
+                                        <span>Unassigned</span>
+                                    </div>
+                                </SelectItem>
+                                {users.map(user => (
+                                    <SelectItem key={user.id} value={user.id}>
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-6 w-6">
+                                                <AvatarImage src={user.avatarUrl} alt={user.name} />
+                                                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <span>{user.name}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
 
                     <div className="text-muted-foreground">Reporter</div>
                     <div>{reporter ? (

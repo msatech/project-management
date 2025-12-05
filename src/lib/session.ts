@@ -2,6 +2,7 @@ import 'server-only';
 import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import { db } from './db';
+import type { User, Organization, Project } from '@prisma/client';
 
 const secretKey = process.env.SESSION_SECRET || 'your-super-secret-key';
 const key = new TextEncoder().encode(secretKey);
@@ -37,9 +38,15 @@ export async function createSession(userId: string) {
   });
 }
 
-export async function getSession() {
+// This function is safe to use in middleware
+export async function getSessionPayload() {
   const sessionCookie = cookies().get('session')?.value;
-  const payload = await decrypt(sessionCookie);
+  return await decrypt(sessionCookie);
+}
+
+
+export async function getSession() {
+  const payload = await getSessionPayload();
 
   if (!payload?.userId) {
     return null;
