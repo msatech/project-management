@@ -54,7 +54,7 @@ async function main() {
     data: {
       name: 'Scrum Project',
       key: 'SCRUM',
-      type: ProjectType.SCRUM,
+      type: 'SCRUM',
       organizationId: organization.id,
       leadId: owner.id,
     },
@@ -64,7 +64,7 @@ async function main() {
     data: {
       name: 'Kanban Project',
       key: 'KAN',
-      type: ProjectType.KANBAN,
+      type: 'KANBAN',
       organizationId: organization.id,
       leadId: member.id,
     },
@@ -74,11 +74,11 @@ async function main() {
 
   // Create Statuses for both projects
   const statusesData = [
-    { name: 'Backlog', category: StatusCategory.TODO, order: 0 },
-    { name: 'To Do', category: StatusCategory.TODO, order: 1 },
-    { name: 'In Progress', category: StatusCategory.IN_PROGRESS, order: 2 },
-    { name: 'In Review', category: StatusCategory.IN_PROGRESS, order: 3 },
-    { name: 'Done', category: StatusCategory.DONE, order: 4 },
+    { name: 'Backlog', category: 'TODO', order: 0 },
+    { name: 'To Do', category: 'TODO', order: 1 },
+    { name: 'In Progress', category: 'IN_PROGRESS', order: 2 },
+    { name: 'In Review', category: 'IN_PROGRESS', order: 3 },
+    { name: 'Done', category: 'DONE', order: 4 },
   ];
 
   const scrumStatuses = await Promise.all(
@@ -95,7 +95,7 @@ async function main() {
     data: {
       name: 'Sprint 1',
       projectId: scrumProject.id,
-      status: SprintStatus.COMPLETED,
+      status: 'COMPLETED',
       startDate: new Date(new Date().setDate(new Date().getDate() - 14)),
       endDate: new Date(new Date().setDate(new Date().getDate() - 7)),
       goal: 'Launch version 1.0 of the feature.',
@@ -106,7 +106,7 @@ async function main() {
     data: {
       name: 'Sprint 2',
       projectId: scrumProject.id,
-      status: SprintStatus.ACTIVE,
+      status: 'ACTIVE',
       startDate: new Date(new Date().setDate(new Date().getDate() - 6)),
       endDate: new Date(new Date().setDate(new Date().getDate() + 8)),
       goal: 'Address user feedback and fix critical bugs.',
@@ -117,7 +117,7 @@ async function main() {
     data: {
       name: 'Sprint 3',
       projectId: scrumProject.id,
-      status: SprintStatus.FUTURE,
+      status: 'FUTURE',
       startDate: new Date(new Date().setDate(new Date().getDate() + 9)),
       endDate: new Date(new Date().setDate(new Date().getDate() + 23)),
       goal: 'Begin work on the next major feature set.',
@@ -137,6 +137,9 @@ async function main() {
     "Integrate with payment gateway", "Write E2E tests for core features"
   ];
   
+  const issuePriorities = ['NONE', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+  const issueTypes = ['STORY', 'TASK', 'BUG'];
+
   const issues = [];
   for (let i = 0; i < issueTitles.length; i++) {
     const isScrum = i < 15;
@@ -173,8 +176,8 @@ async function main() {
         statusId: status!.id,
         reporterId: owner.id,
         assigneeId: i % 2 === 0 ? owner.id : member.id,
-        type: i % 3 === 0 ? IssueType.STORY : (i % 3 === 1 ? IssueType.TASK : IssueType.BUG),
-        priority: Object.values(Priority)[i % 5],
+        type: issueTypes[i % 3],
+        priority: issuePriorities[i % 5],
         description: `This is a detailed description for the issue: **${issueTitles[i]}**. It requires careful implementation and testing.`,
         estimatePoints: isScrum ? (i % 5) + 1 : null,
         sprints: sprint ? { create: { sprintId: sprint.id } } : undefined,

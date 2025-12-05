@@ -6,16 +6,21 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { getIssueTypeIcon, getPriorityIcon } from '@/components/icons';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
-import { Bot, Sparkles } from 'lucide-radix';
+import { Bot, Sparkles } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { Comment, Issue, Status, User } from '@prisma/client';
+
+type IssueWithDetails = Issue & { 
+    status: Status, 
+    comments: (Comment & { author: User })[] 
+};
 
 export function IssueDetailSheet({ issueId, users }: { issueId: string; users: any[] }) {
-    const [issue, setIssue] = useState<any>(null);
+    const [issue, setIssue] = useState<IssueWithDetails | null>(null);
     const [loading, setLoading] = useState(true);
     const [summary, setSummary] = useState('');
     const [isSummaryLoading, startSummaryTransition] = useTransition();
@@ -23,10 +28,18 @@ export function IssueDetailSheet({ issueId, users }: { issueId: string; users: a
 
     useEffect(() => {
         getIssueDetails(issueId).then(data => {
-            setIssue(data);
+            if (data) {
+                const authorIds = data.comments.map(c => c.authorId);
+                const authors = users.filter(u => authorIds.includes(u.id));
+                const commentsWithAuthors = data.comments.map(comment => ({
+                    ...comment,
+                    author: users.find(u => u.id === comment.authorId)
+                }));
+                setIssue({ ...data, comments: commentsWithAuthors});
+            }
             setLoading(false);
         });
-    }, [issueId]);
+    }, [issueId, users]);
 
     const handleSummarize = () => {
         if (!issue) return;
@@ -39,6 +52,7 @@ export function IssueDetailSheet({ issueId, users }: { issueId: string; users: a
     };
 
     const handleAssigneeChange = async (assigneeId: string) => {
+        if (!issue) return;
         const newAssigneeId = assigneeId === 'unassigned' ? null : assigneeId;
         try {
             await updateIssueAssignee({
@@ -96,7 +110,7 @@ export function IssueDetailSheet({ issueId, users }: { issueId: string; users: a
                     <h2 className="text-lg font-semibold mt-6 mb-2">Comments</h2>
                     <div className="space-y-4">
                         {issue.comments.map((comment: any) => {
-                             const author = users.find(u => u.id === comment.authorId);
+                             const author = comment.author;
                              return (
                                 <div key={comment.id} className="flex gap-3">
                                 <Avatar className="h-8 w-8">

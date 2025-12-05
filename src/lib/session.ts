@@ -7,7 +7,7 @@ import type { User, Organization, Project } from '@prisma/client';
 const secretKey = process.env.SESSION_SECRET || 'your-super-secret-key';
 const key = new TextEncoder().encode(secretKey);
 
-export async function encrypt(payload: any) {
+async function encrypt(payload: any) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -15,7 +15,7 @@ export async function encrypt(payload: any) {
     .sign(key);
 }
 
-export async function decrypt(session: string | undefined = '') {
+async function decrypt(session: string | undefined = '') {
   try {
     const { payload } = await jwtVerify(session, key, {
       algorithms: ['HS256'],
@@ -38,7 +38,7 @@ export async function createSession(userId: string) {
   });
 }
 
-// This function is safe to use in middleware
+// This function is safe to use in middleware as it does NOT import db
 export async function getSessionPayload() {
   const sessionCookie = cookies().get('session')?.value;
   return await decrypt(sessionCookie);
