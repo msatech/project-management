@@ -38,15 +38,9 @@ export async function createSession(userId: string) {
   });
 }
 
-// This function is safe to use in middleware as it does NOT import db
-export async function getSessionPayload() {
-  const sessionCookie = cookies().get('session')?.value;
-  return await decrypt(sessionCookie);
-}
-
-
 export async function getSession() {
-  const payload = await getSessionPayload();
+  const sessionCookie = cookies().get('session')?.value;
+  const payload = await decrypt(sessionCookie);
 
   if (!payload?.userId) {
     return null;
