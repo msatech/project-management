@@ -14,10 +14,12 @@ import {
 import { logout } from "@/lib/actions/auth.actions"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
+import { useRouter } from "next/navigation"
 import { Skeleton } from "../ui/skeleton"
 
 export function UserNav({ user }: { user: any }) {
   const { setTheme, theme } = useTheme()
+  const router = useRouter();
 
   if (!user) {
     return <Skeleton className="h-8 w-8 rounded-full" />
@@ -44,7 +46,7 @@ export function UserNav({ user }: { user: any }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => router.push('/app/profile')}>
             Profile
           </DropdownMenuItem>
           <DropdownMenuItem>

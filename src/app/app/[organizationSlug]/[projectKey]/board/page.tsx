@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import { BoardView } from './_components/board-view';
 import { getSession } from '@/lib/session';
+import { CreateIssueButton } from './_components/create-issue-button';
 
 export const revalidate = 0;
 
@@ -41,5 +42,22 @@ export default async function BoardPage({ params }: { params: { organizationSlug
     
     const users = project.organization.members.map(m => m.user);
 
-    return <BoardView project={project} initialIssues={project.issues} statuses={project.statuses} users={users} currentUser={session.user} />;
+    return (
+        <>
+            <div className="flex justify-end mb-4">
+                <CreateIssueButton 
+                    projectId={project.id}
+                    projectKey={project.key}
+                    statuses={project.statuses}
+                    users={users}
+                />
+            </div>
+            <BoardView 
+                project={project} 
+                initialIssues={project.issues} 
+                statuses={project.statuses} 
+                users={users} 
+            />
+        </>
+    );
 }
