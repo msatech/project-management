@@ -4,15 +4,19 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSessionPayload } from './lib/session.edge';
 
-const protectedRoutes = ['/dashboard', '/organization']; // Add base protected routes
+const protectedRoutes = ['/app', '/dashboard', '/organization'];
 const publicRoutes = ['/login', '/register', '/forgot-password', '/reset-password', '/'];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Add the pathname to the request headers for use in layouts
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-next-pathname', pathname);
+
   const sessionPayload = await getSessionPayload();
 
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route)) || pathname.includes('/app');
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
   const isPublicRoute = publicRoutes.includes(pathname);
 
   if (!sessionPayload && isProtectedRoute) {
@@ -24,14 +28,16 @@ export async function middleware(request: NextRequest) {
 
   if (sessionPayload && isPublicRoute && pathname !== '/') {
     const url = request.nextUrl.clone();
-    // Because middleware can't access the database, we can't do a smart redirect
-    // to the user's first project. We'll redirect to a generic app path.
-    // The page itself will handle the final redirect.
+    // Redirect to the base /app path. The app layout will handle the rest.
     url.pathname = '/app';
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 export const config = {
