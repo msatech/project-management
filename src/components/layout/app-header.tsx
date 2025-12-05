@@ -10,8 +10,11 @@ import {
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 import { UserNav } from "./user-nav"
+import { getSession } from "@/lib/session"
 
-export function AppHeader() {
+export async function AppHeader() {
+  const session = await getSession();
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
       <Breadcrumb className="hidden md:flex">
@@ -41,7 +44,7 @@ export function AppHeader() {
           className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[336px]"
         />
       </div>
-      <UserNav />
+      <UserNav user={session?.user} />
     </header>
   )
 }

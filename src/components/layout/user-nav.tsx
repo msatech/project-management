@@ -12,32 +12,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { logout } from "@/lib/actions/auth.actions"
-import { getSession } from "@/lib/session"
 import { Moon, Sun } from "lucide-react"
 import { useTheme } from "next-themes"
-import { useEffect, useState } from "react"
 import { Skeleton } from "../ui/skeleton"
 
-export function UserNav() {
-  const [user, setUser] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+export function UserNav({ user }: { user: any }) {
   const { setTheme, theme } = useTheme()
 
-  useEffect(() => {
-    getSession().then(session => {
-        if(session) {
-            setUser(session.user);
-        }
-        setLoading(false);
-    })
-  }, []);
-
-  if (loading) {
-    return <Skeleton className="h-8 w-8 rounded-full" />
-  }
-  
   if (!user) {
-    return null;
+    return <Skeleton className="h-8 w-8 rounded-full" />
   }
 
   return (
