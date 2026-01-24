@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "db:seed": "npx prisma db seed"
+    "db:seed": "npx prisma db seed",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "vercel-build": "prisma generate && prisma db push && next build"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

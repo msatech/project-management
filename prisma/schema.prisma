@@ -6,13 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String  @db.ObjectId
   type              String
   provider          String
   providerAccountId String
@@ -24,20 +24,21 @@ model Account {
   id_token          String?
   session_state     String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 
   @@unique([provider, providerAccountId])
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   sessionToken String   @unique
-  userId       String
+  userId       String   @db.ObjectId
   expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id])
 }
 
 model VerificationToken {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
   identifier String
   token      String   @unique
   expires    DateTime
@@ -47,7 +48,7 @@ model VerificationToken {
 
 // User and Organization
 model User {
-  id              String    @id @default(cuid())
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
   name            String?
   email           String?   @unique
   emailVerified   DateTime?
@@ -56,8 +57,8 @@ model User {
   avatarUrl       String?
   accounts        Account[]
   sessions        Session[]
-  role            String    @default("USER") // Was enum Role
-  themePreference String?   @default("SYSTEM") // Was enum ThemePreference
+  role            String    @default("USER")
+  themePreference String?   @default("SYSTEM")
 
   // Organization relations
   ownedOrganizations Organization[]      @relation("OrganizationOwner")
@@ -75,32 +76,29 @@ model User {
 }
 
 model Organization {
-  id        String    @id @default(cuid())
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   slug      String    @unique
-  ownerId   String
+  ownerId   String    @db.ObjectId
   owner     User      @relation("OrganizationOwner", fields: [ownerId], references: [id])
   members   OrganizationMember[]
   projects  Project[]
-  plan      String    @default("FREE") // Was enum Plan
+  plan      String    @default("FREE")
   invitations Invitation[]
   roles     Role[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
 
-
-
-
 // Project Management
 model Project {
-  id             String       @id @default(cuid())
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
   name           String
   key            String       @unique
-  type           String       @default("KANBAN") // Was enum ProjectType
-  organizationId String
+  type           String       @default("KANBAN")
+  organizationId String       @db.ObjectId
   organization   Organization @relation(fields: [organizationId], references: [id])
-  leadId         String
+  leadId         String       @db.ObjectId
   lead           User         @relation("ProjectLead", fields: [leadId], references: [id])
   statuses       Status[]
   sprints        Sprint[]
@@ -111,33 +109,33 @@ model Project {
 }
 
 model Status {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
-  category  String   @default("TODO") // Was enum StatusCategory
+  category  String   @default("TODO")
   order     Int
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String   @db.ObjectId
+  project   Project  @relation(fields: [projectId], references: [id])
   issues    Issue[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Sprint {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   goal      String?
-  status    String   @default("FUTURE") // Was enum SprintStatus
+  status    String   @default("FUTURE")
   startDate DateTime?
   endDate   DateTime?
-  projectId String
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String   @db.ObjectId
+  project   Project  @relation(fields: [projectId], references: [id])
   issues    IssueSprint[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model Issue {
-  id              String  @id @default(cuid())
+  id              String  @id @default(auto()) @map("_id") @db.ObjectId
   key             String  @unique
   title           String
   description     String?
@@ -146,18 +144,18 @@ model Issue {
   estimatedHours  Float?
   startDate       DateTime?
   dueDate         DateTime?
-  type            String  @default("TASK") // Was enum IssueType
-  priority        String  @default("NONE") // Was enum Priority
+  type            String  @default("TASK")
+  priority        String  @default("NONE")
   
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String  @db.ObjectId
+  project   Project @relation(fields: [projectId], references: [id])
 
-  statusId String
+  statusId String @db.ObjectId
   status   Status @relation(fields: [statusId], references: [id])
 
-  reporterId String
+  reporterId String @db.ObjectId
   reporter   User   @relation("Reporter", fields: [reporterId], references: [id])
-  assigneeId String?
+  assigneeId String? @db.ObjectId
   assignee   User?  @relation("Assignee", fields: [assigneeId], references: [id])
 
   sprints   IssueSprint[]
@@ -170,23 +168,23 @@ model Issue {
   customFieldValues String?
 
   // Hierarchy
-  parentId        String?
-  parent          Issue?   @relation("IssueHierarchy", fields: [parentId], references: [id])
-  children        Issue[]  @relation("IssueHierarchy")
+  parentId        String? @db.ObjectId
+  parent          Issue?  @relation("IssueHierarchy", fields: [parentId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  children        Issue[] @relation("IssueHierarchy")
 
   attachments     Attachment[]
   checklist       ChecklistItem[]
 }
 
 model OrganizationMember {
-  id             String       @id @default(cuid())
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orgRole        String       @default("MEMBER") // Keeping for backwards compatibility/fallback
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  organizationId String       @db.ObjectId
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  userId         String       @db.ObjectId
+  user           User         @relation(fields: [userId], references: [id])
+  orgRole        String       @default("MEMBER")
   
-  roleId         String?
+  roleId         String?      @db.ObjectId
   role           Role?        @relation(fields: [roleId], references: [id])
 
   createdAt      DateTime     @default(now())
@@ -196,41 +194,40 @@ model OrganizationMember {
 }
 
 model IssueSprint {
-  issueId   String
-  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  sprintId  String
-  sprint    Sprint   @relation(fields: [sprintId], references: [id], onDelete: Cascade)
-  addedAt   DateTime @default(now())
+  id       String   @id @default(auto()) @map("_id") @db.ObjectId
+  issueId  String   @db.ObjectId
+  issue    Issue    @relation(fields: [issueId], references: [id])
+  sprintId String   @db.ObjectId
+  sprint   Sprint   @relation(fields: [sprintId], references: [id])
+  addedAt  DateTime @default(now())
 
-  @@id([issueId, sprintId])
+  @@unique([issueId, sprintId])
 }
 
 model Comment {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   body      String
-  issueId   String
-  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  authorId  String
+  issueId   String   @db.ObjectId
+  issue     Issue    @relation(fields: [issueId], references: [id])
+  authorId  String   @db.ObjectId
   author    User     @relation(fields: [authorId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model ActivityLog {
-  id        String   @id @default(cuid())
-  issueId   String
-  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  actorId   String
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  issueId   String   @db.ObjectId
+  issue     Issue    @relation(fields: [issueId], references: [id])
+  actorId   String   @db.ObjectId
   actor     User     @relation(fields: [actorId], references: [id])
-  type      String // e.g., STATUS_CHANGED, ASSIGNEE_CHANGED
-  metadata  String? // Was Json
+  type      String
+  metadata  String?
   createdAt DateTime   @default(now())
 }
 
-
-
 model CustomField {
-  id              String   @id @default(cuid())
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
   name            String
   projectId       String
   type            String
@@ -240,9 +237,9 @@ model CustomField {
 }
 
 model Notification {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id])
   type      String
   title     String
   message   String?
@@ -252,13 +249,13 @@ model Notification {
 }
 
 model Invitation {
-  id             String   @id @default(cuid())
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
   email          String
-  organizationId String?
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  projectId      String?
-  project        Project?      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  inviterId      String
+  organizationId String?  @db.ObjectId
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  projectId      String?  @db.ObjectId
+  project        Project?      @relation(fields: [projectId], references: [id])
+  inviterId      String   @db.ObjectId
   inviter        User          @relation(fields: [inviterId], references: [id])
   token          String   @unique
   status         String   @default("PENDING")
@@ -271,11 +268,11 @@ model Invitation {
 }
 
 model Role {
-  id             String   @id @default(cuid())
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
   name           String
   description    String?
-  organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String   @db.ObjectId
+  organization   Organization @relation(fields: [organizationId], references: [id])
   permissions    Permission[]
   members        OrganizationMember[]
   createdAt      DateTime @default(now())
@@ -285,32 +282,32 @@ model Role {
 }
 
 model Permission {
-  id     String @id @default(cuid())
-  action String // e.g., "MANAGE_PROJECTS", "CREATE_ISSUES"
-  roleId String
-  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  action String
+  roleId String @db.ObjectId
+  role   Role   @relation(fields: [roleId], references: [id])
 
   @@unique([roleId, action])
 }
 
 model Attachment {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   name      String
   url       String
   size      Int
   type      String
-  issueId   String
-  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  uploaderId String
+  issueId   String   @db.ObjectId
+  issue     Issue    @relation(fields: [issueId], references: [id])
+  uploaderId String  @db.ObjectId
   uploader  User     @relation(fields: [uploaderId], references: [id])
   createdAt DateTime @default(now())
 }
 
 model ChecklistItem {
-  id        String   @id @default(cuid())
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
   title     String
   isChecked Boolean  @default(false)
-  issueId   String
-  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  issueId   String   @db.ObjectId
+  issue     Issue    @relation(fields: [issueId], references: [id])
   createdAt DateTime @default(now())
 }
