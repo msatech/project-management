@@ -19,6 +19,6 @@ async function decrypt(session: string | undefined = '') {
 
 // This function is safe to use in middleware as it does NOT import db
 export async function getSessionPayload() {
-  const sessionCookie = cookies().get('session')?.value;
+  const sessionCookie = (await cookies()).get('session')?.value;
   return await decrypt(sessionCookie);
 }

@@ -1,4 +1,4 @@
-import { PrismaClient, ProjectType, IssueType, Priority, StatusCategory, SprintStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { PlaceHolderImages } from '../src/lib/placeholder-images';
 

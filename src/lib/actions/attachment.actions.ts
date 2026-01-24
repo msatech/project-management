@@ -3,7 +3,6 @@
 import { db } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
-import { put } from '@vercel/blob';
 
 export async function uploadAttachment({
   issueId,

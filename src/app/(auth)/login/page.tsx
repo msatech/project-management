@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useSearchParams } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useState, useTransition, Suspense } from 'react';
 import { Mountain } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { login, register } from '@/lib/actions/auth.actions';
 import { LoginSchema, loginSchema } from '@/lib/validators';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-export default function LoginPage() {
+function LoginForm() {
   const searchParams = useSearchParams();
   const redirectUrl = searchParams.get('redirect');
 
@@ -103,5 +103,13 @@ export default function LoginPage() {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-[400px]">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

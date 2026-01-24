@@ -121,8 +121,8 @@ export function RichTextEditor({ value, onChange, editable = true, users = [], c
                   return
                 }
 
-                popup = tippy('body', {
-                  getReferenceClientRect: props.clientRect,
+                popup = tippy(document.body, {
+                  getReferenceClientRect: props.clientRect as () => DOMRect,
                   appendTo: () => document.body,
                   content: component.element,
                   showOnCreate: true,
