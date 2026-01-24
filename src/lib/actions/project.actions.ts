@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { db } from '../db';
 import { getSession } from '../session';
-import { ProjectType, StatusCategory } from '@prisma/client';
+import { ProjectType, StatusCategory } from '@/lib/prisma-enums';
 
 export async function createProject({
   name,
@@ -30,6 +30,10 @@ export async function createProject({
   if (!orgMember) {
     throw new Error('You are not a member of this organization.');
   }
+
+  // Check CREATE_PROJECTS permission
+  const { requireCurrentUserPermission } = await import('../permissions');
+  await requireCurrentUserPermission(organizationId, 'CREATE_PROJECTS');
 
   // Generate a project key (e.g., "My Project" -> "MP")
   const key = name

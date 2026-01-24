@@ -30,12 +30,14 @@ interface OrgSwitcherProps extends PopoverTriggerProps {
 }
 
 export function OrgSwitcher({ className, user, currentOrg, userOrgs }: OrgSwitcherProps) {
+  console.log('[OrgSwitcher] Received userOrgs:', userOrgs);
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
 
   const onOrgSelect = (org: any) => {
     setOpen(false)
     router.push(`/app/${org.slug}`)
+    router.refresh()
   }
 
   return (

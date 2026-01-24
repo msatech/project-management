@@ -1,18 +1,58 @@
 'use client'
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { DndContext, DragEndEvent, DragOverEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove } from '@dnd-kit/sortable';
 import { createPortal } from 'react-dom';
-import { BoardColumn, BoardColumnSkeleton } from './board-column';
+import { BoardColumn } from './board-column';
 import { IssueCard } from './issue-card';
-import { updateIssueOrder, updateIssueStatus } from '@/lib/actions/issue.actions';
+import { updateIssueOrder } from '@/lib/actions/issue.actions';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 
-export function BoardView({ project, initialIssues, statuses, users, currentUser }: any) {
+export function BoardView({ project, initialIssues, statuses: initialStatuses, users, currentUser, sprints = [] }: any) {
     const [issues, setIssues] = useState(initialIssues);
+    const [statuses, setStatuses] = useState(initialStatuses);
     const [activeIssue, setActiveIssue] = useState<any>(null);
+    const [isPollingPaused, setIsPollingPaused] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+    const router = useRouter();
     const { toast } = useToast();
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    // Fast Polling for Realtime Updates
+    useEffect(() => {
+        if (isPollingPaused) return;
+
+        const interval = setInterval(async () => {
+            if (document.hidden) return; // Don't poll if tab is backgrounded
+            
+            try {
+                const res = await fetch(`/api/board/${project.key}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    
+                    setIssues((prev: any[]) => {
+                        const isDifferent = JSON.stringify(prev) !== JSON.stringify(data.issues);
+                        return isDifferent ? data.issues : prev;
+                    });
+                    
+                    setStatuses((prev: any[]) => {
+                        const isDifferent = JSON.stringify(prev) !== JSON.stringify(data.statuses);
+                        return isDifferent ? data.statuses : prev;
+                    });
+                }
+            } catch (error) {
+                console.error("Polling error:", error);
+            }
+        }, 3000); // Poll every 3 seconds
+
+        return () => clearInterval(interval);
+    }, [project.key, isPollingPaused]);
+
 
     const issuesById = useMemo(() => {
         const map = new Map();
@@ -20,18 +60,20 @@ export function BoardView({ project, initialIssues, statuses, users, currentUser
         return map;
     }, [issues]);
 
-    const columnsId = useMemo(() => statuses.map((col: any) => col.id), [statuses]);
-
     const sensors = useSensors(
         useSensor(PointerSensor, {
             activationConstraint: {
-                distance: 10,
+                distance: 8,
             },
         })
     );
-    
+
     const handleDragStart = (event: DragStartEvent) => {
-        setActiveIssue(event.active.data.current?.issue);
+        setIsPollingPaused(true);
+        const { active } = event;
+        const activeId = active.id;
+        const activeIssue = issuesById.get(activeId);
+        setActiveIssue(activeIssue);
     };
 
     const handleDragOver = (event: DragOverEvent) => {
@@ -45,8 +87,6 @@ export function BoardView({ project, initialIssues, statuses, users, currentUser
 
         const isActiveAnIssue = active.data.current?.type === 'Issue';
         const isOverAnIssue = over.data.current?.type === 'Issue';
-
-        if (!isActiveAnIssue) return;
         
         // Dropping an Issue over another Issue
         if (isActiveAnIssue && isOverAnIssue) {
@@ -76,6 +116,7 @@ export function BoardView({ project, initialIssues, statuses, users, currentUser
 
     const handleDragEnd = async (event: DragEndEvent) => {
         setActiveIssue(null);
+        setIsPollingPaused(false);
         const { active, over } = event;
         if (!over) return;
 
@@ -85,20 +126,23 @@ export function BoardView({ project, initialIssues, statuses, users, currentUser
         if (activeIssueId === overId) return;
 
         const newStatusId = over.data.current?.type === 'Column' ? overId : over.data.current?.issue.statusId;
-        const originalIssue = initialIssues.find((i: any) => i.id === activeIssueId);
+        const originalIssue = issuesById.get(activeIssueId);
         const newOrderIssues = issues.filter((i: any) => i.statusId === newStatusId);
 
         try {
             await updateIssueOrder({
-                issueId: activeIssueId,
-                statusId: newStatusId,
+                issueId: activeIssueId.toString(),
+                statusId: newStatusId.toString(),
                 orderedIds: newOrderIssues.map((i: any) => i.id),
                 projectId: project.id,
             });
 
-            if (originalIssue.statusId !== newStatusId) {
+            // Force refresh to get persisted state from server
+            router.refresh();
+
+            if (originalIssue && originalIssue.statusId !== newStatusId) {
                 toast({
-                    title: `Issue moved to ${statuses.find((s:any) => s.id === newStatusId).name}`
+                    title: `Issue moved to ${statuses.find((s:any) => s.id === newStatusId)?.name}`
                 });
             }
 
@@ -108,8 +152,8 @@ export function BoardView({ project, initialIssues, statuses, users, currentUser
                 description: 'Could not save changes. Please refresh and try again.',
                 variant: 'destructive',
             });
-            // Revert optimistic update
-            setIssues(initialIssues);
+            // Revert optimistic update by refreshing
+            router.refresh(); 
         }
     };
 
@@ -118,11 +162,11 @@ export function BoardView({ project, initialIssues, statuses, users, currentUser
         <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
             onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
         >
-            <div className="flex gap-4 h-full overflow-x-auto">
-                <SortableContext items={columnsId}>
+            <div className="flex gap-6 overflow-x-auto pb-4">
+                <SortableContext items={statuses.map((s: any) => s.id)}>
                     {statuses.map((status: any) => (
                         <BoardColumn
                             key={status.id}
@@ -131,16 +175,19 @@ export function BoardView({ project, initialIssues, statuses, users, currentUser
                             users={users}
                             project={project}
                             currentUser={currentUser}
+                            statuses={statuses}
+                            sprints={sprints}
                         />
                     ))}
                 </SortableContext>
             </div>
-            {createPortal(
+            {isMounted && createPortal(
                 <DragOverlay>
                     {activeIssue && (
                         <IssueCard
                             issue={activeIssue}
                             users={users}
+                            isDragging
                         />
                     )}
                 </DragOverlay>,

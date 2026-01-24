@@ -9,8 +9,9 @@ export default async function ProjectLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { organizationSlug: string; projectKey: string };
+  params: Promise<{ organizationSlug: string; projectKey: string }>;
 }) {
+  const { organizationSlug, projectKey } = await params;
   const session = await getSession();
   if (!session) {
     redirect('/login');
@@ -18,9 +19,9 @@ export default async function ProjectLayout({
 
   const project = await db.project.findFirst({
     where: {
-      key: params.projectKey,
+      key: projectKey,
       organization: {
-        slug: params.organizationSlug,
+        slug: organizationSlug,
         members: {
           some: {
             userId: session.user.id,
@@ -39,7 +40,7 @@ export default async function ProjectLayout({
         <div className="border-b">
             <div className="px-6">
                 <h1 className="text-2xl font-bold tracking-tight py-4">{project.name}</h1>
-                <ProjectNav projectKey={project.key} orgSlug={params.organizationSlug} />
+                <ProjectNav projectKey={project.key} orgSlug={organizationSlug} />
             </div>
         </div>
         <div className="flex-1 p-6 pt-4">

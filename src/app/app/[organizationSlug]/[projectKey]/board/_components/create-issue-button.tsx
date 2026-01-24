@@ -9,10 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { createIssue } from "@/lib/actions/issue.actions";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { IssueType, Priority, Status, User } from "@prisma/client";
+import { Status, User } from "@prisma/client";
+import { IssueType, Priority } from "@/lib/prisma-enums";
 import { Plus } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
 import { z } from "zod";
 
 const issueSchema = z.object({
@@ -30,12 +32,15 @@ type CreateIssueButtonProps = {
     projectKey: string;
     statuses: Status[];
     users: User[];
+    defaultStatusId?: string;
+    children?: React.ReactNode;
 }
 
-export function CreateIssueButton({ projectId, projectKey, statuses, users }: CreateIssueButtonProps) {
+export function CreateIssueButton({ projectId, projectKey, statuses, users, defaultStatusId, children }: CreateIssueButtonProps) {
     const [open, setOpen] = useState(false);
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
+    const router = useRouter();
     
     const form = useForm<z.infer<typeof issueSchema>>({
         resolver: zodResolver(issueSchema),
@@ -44,9 +49,12 @@ export function CreateIssueButton({ projectId, projectKey, statuses, users }: Cr
             description: "",
             type: "STORY",
             priority: "MEDIUM",
-            statusId: statuses.find(s => s.category === 'TODO')?.id,
+            statusId: defaultStatusId || statuses.find(s => s.category === 'TODO')?.id || statuses[0]?.id,
         }
     });
+
+    // Reset form when defaultStatusId changes or dialog opens
+    // (Optional, but good practice if reuse same component instance with different props, though here likely distinct instances)
 
     const onSubmit = (values: z.infer<typeof issueSchema>) => {
         startTransition(async () => {
@@ -59,6 +67,7 @@ export function CreateIssueButton({ projectId, projectKey, statuses, users }: Cr
                 toast({ title: "Issue created successfully" });
                 setOpen(false);
                 form.reset();
+                router.refresh(); // Force refresh to show new issue
             } catch (error) {
                 toast({
                     title: "Failed to create issue",
@@ -73,10 +82,12 @@ export function CreateIssueButton({ projectId, projectKey, statuses, users }: Cr
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Create Issue
-                </Button>
+                {children ? children : (
+                    <Button>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Create Issue
+                    </Button>
+                )}
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>

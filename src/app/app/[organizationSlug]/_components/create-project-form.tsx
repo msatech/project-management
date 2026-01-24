@@ -9,11 +9,12 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { createProject } from '@/lib/actions/project.actions';
-import { ProjectType } from '@prisma/client';
+import { ProjectType } from '@/lib/prisma-enums';
 import { KanbanSquare, BookCopy } from 'lucide-react';
 
 const createProjectSchema = z.object({
@@ -91,7 +92,7 @@ export function CreateProjectForm({ organization }: { organization: { id: string
                                 <FormControl>
                                     <RadioGroup
                                         onValueChange={field.onChange}
-                                        defaultValue={field.value}
+                                        value={field.value}
                                         className="grid grid-cols-1 md:grid-cols-2 gap-4"
                                         disabled={isPending}
                                     >
@@ -99,7 +100,14 @@ export function CreateProjectForm({ organization }: { organization: { id: string
                                             <FormControl>
                                                 <RadioGroupItem value={ProjectType.KANBAN} id="kanban" className="sr-only" />
                                             </FormControl>
-                                            <Label htmlFor="kanban" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+                                            <Label 
+                                                htmlFor="kanban" 
+                                                className={`flex flex-col items-center justify-between rounded-md border-2 bg-popover p-4 cursor-pointer transition-all ${
+                                                    field.value === ProjectType.KANBAN 
+                                                        ? 'border-primary bg-primary/10' 
+                                                        : 'border-muted hover:bg-accent hover:text-accent-foreground'
+                                                }`}
+                                            >
                                                 <KanbanSquare className="mb-3 h-6 w-6" />
                                                 Kanban
                                             </Label>
@@ -108,7 +116,14 @@ export function CreateProjectForm({ organization }: { organization: { id: string
                                             <FormControl>
                                                  <RadioGroupItem value={ProjectType.SCRUM} id="scrum" className="sr-only" />
                                             </FormControl>
-                                            <Label htmlFor="scrum" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground [&:has([data-state=checked])]:border-primary">
+                                            <Label 
+                                                htmlFor="scrum" 
+                                                className={`flex flex-col items-center justify-between rounded-md border-2 bg-popover p-4 cursor-pointer transition-all ${
+                                                    field.value === ProjectType.SCRUM 
+                                                        ? 'border-primary bg-primary/10' 
+                                                        : 'border-muted hover:bg-accent hover:text-accent-foreground'
+                                                }`}
+                                            >
                                                 <BookCopy className="mb-3 h-6 w-6" />
                                                 Scrum
                                             </Label>

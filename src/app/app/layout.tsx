@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     },
   });
 
-  const headersList = headers();
+  const headersList = await headers();
   const pathname = headersList.get('x-next-pathname') || '';
 
   if (orgCount === 0 && pathname !== '/app/create-organization') {

@@ -16,10 +16,11 @@ export function ProjectNav({ className, projectKey, orgSlug, ...props }: Project
 
   const links = [
     { name: "Board", href: `${basePath}/board` },
+    { name: "Issues", href: `${basePath}/issues` },
     { name: "Backlog", href: `${basePath}/backlog` },
     { name: "Sprints", href: `${basePath}/sprints` },
-    { name: "Reports", href: `${basePath}/reports` },
-    { name: "Settings", href: `${basePath}/settings` },
+    { name: "Timeline", href: `${basePath}/timeline` },
+    { name: "Analytics", href: `${basePath}/analytics` },
   ];
   
   return (

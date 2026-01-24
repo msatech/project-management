@@ -3,14 +3,19 @@ import { getSession } from '@/lib/session';
 import { redirect, notFound } from 'next/navigation';
 import { CreateProjectForm } from './_components/create-project-form';
 
-export default async function OrganizationDashboardPage({ params }: { params: { organizationSlug: string } }) {
+export default async function OrganizationDashboardPage({ 
+  params 
+}: { 
+  params: Promise<{ organizationSlug: string }> 
+}) {
+  const { organizationSlug } = await params;
   const session = await getSession();
   if (!session) {
     redirect('/login');
   }
 
   const org = await db.organization.findUnique({
-    where: { slug: params.organizationSlug },
+    where: { slug: organizationSlug },
     include: {
       projects: {
         orderBy: {
